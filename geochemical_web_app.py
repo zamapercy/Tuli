@@ -78,61 +78,91 @@ with col1:
     st.markdown("### Scatter Plot")
     
     # Column selection
-    col_x, col_y = st.columns(2)
+    col_x, col_y, col_color = st.columns(3)
     with col_x:
         x_var = st.selectbox("X Variable", sorted(numeric_cols), key="x_scatter")
     with col_y:
         y_var = st.selectbox("Y Variable", sorted(numeric_cols), index=1 if len(numeric_cols) > 1 else 0, key="y_scatter")
+    with col_color:
+        # Find categorical columns for color grouping
+        categorical_cols = [col for col in df.columns if col not in numeric_cols or df[col].nunique() < 20]
+        color_options = ["Single Color"] + categorical_cols
+        color_by = st.selectbox("Color By", color_options, key="color_scatter")
     
     # Create scatter plot
-    data_scatter = df[[x_var, y_var]].dropna()
+    if color_by == "Single Color":
+        data_scatter = df[[x_var, y_var]].dropna()
+        
+        if len(data_scatter) > 0:
+            # Assign color based on variable pair
+            color_map = {
+                'mgo': '#3498db',  # Blue
+                'ni': '#e74c3c',   # Red
+                'cu': '#f39c12',   # Orange
+                'sio2': '#27ae60', # Green
+                'al2o3': '#9b59b6', # Purple
+                'fe2o3': '#e67e22', # Dark Orange
+                'cao': '#16a085',  # Teal
+                'cr': '#c0392b',   # Dark Red
+                'co': '#8e44ad',   # Dark Purple
+                'zn': '#d35400',   # Pumpkin
+            }
+            
+            # Get color for y variable (or default)
+            plot_color = color_map.get(y_var.lower(), '#34495e')
+            
+            fig_scatter = px.scatter(
+                x=data_scatter[x_var],
+                y=data_scatter[y_var],
+                title=f"{y_var} vs {x_var}",
+                labels={x_var: x_var, y_var: y_var},
+                trendline="ols",
+                opacity=0.7
+            )
+            
+            fig_scatter.update_traces(marker=dict(size=10, color=plot_color, line=dict(width=0.5, color='white')))
+            fig_scatter.update_layout(
+                height=500,
+                font=dict(size=11),
+                showlegend=False,
+                hovermode='closest'
+            )
+    else:
+        # Color by categorical variable
+        plot_data = df[[x_var, y_var, color_by]].dropna()
+        
+        if len(plot_data) > 0:
+            fig_scatter = px.scatter(
+                plot_data,
+                x=x_var,
+                y=y_var,
+                color=color_by,
+                title=f"{y_var} vs {x_var} (colored by {color_by})",
+                labels={x_var: x_var, y_var: y_var},
+                opacity=0.8,
+                color_discrete_sequence=px.colors.qualitative.Bold
+            )
+            
+            fig_scatter.update_traces(marker=dict(size=10, line=dict(width=0.5, color='white')))
+            fig_scatter.update_layout(
+                height=500,
+                font=dict(size=11),
+                hovermode='closest',
+                legend=dict(title=color_by)
+            )
     
-    if len(data_scatter) > 0:
-        # Assign color based on variable pair
-        color_map = {
-            'mgo': '#3498db',  # Blue
-            'ni': '#e74c3c',   # Red
-            'cu': '#f39c12',   # Orange
-            'sio2': '#27ae60', # Green
-            'al2o3': '#9b59b6', # Purple
-            'fe2o3': '#e67e22', # Dark Orange
-            'cao': '#16a085',  # Teal
-            'cr': '#c0392b',   # Dark Red
-            'co': '#8e44ad',   # Dark Purple
-            'zn': '#d35400',   # Pumpkin
-        }
-        
-        # Get color for y variable (or default)
-        plot_color = color_map.get(y_var.lower(), '#34495e')
-        
-        fig_scatter = px.scatter(
-            x=data_scatter[x_var],
-            y=data_scatter[y_var],
-            title=f"{y_var} vs {x_var}",
-            labels={x_var: x_var, y_var: y_var},
-            trendline="ols",
-            opacity=0.7
-        )
-        
-        fig_scatter.update_traces(marker=dict(size=10, color=plot_color, line=dict(width=0.5, color='white')))
-        fig_scatter.update_layout(
-            height=500,
-            font=dict(size=11),
-            showlegend=False,
-            hovermode='closest'
-        )
-        
+    if len(data_scatter if color_by == "Single Color" else plot_data) > 0:
         st.plotly_chart(fig_scatter, use_container_width=True)
         
         # Statistics
         with st.expander("📈 Statistics"):
             stats_col1, stats_col2 = st.columns(2)
             with stats_col1:
-                st.metric(f"{x_var} Mean", f"{data_scatter[x_var].mean():.2f}")
-                st.metric(f"{x_var} Std", f"{data_scatter[x_var].std():.2f}")
+                st.metric(f"{x_var} Mean", f"{df[x_var].mean():.2f}")
+                st.metric(f"{x_var} Std", f"{df[x_var].std():.2f}")
             with stats_col2:
-                st.metric(f"{y_var} Mean", f"{data_scatter[y_var].mean():.2f}")
-                st.metric(f"{y_var} Std", f"{data_scatter[y_var].std():.2f}")
+                st.metric(f"{y_var} Mean", f"{df[y_var].mean():.2f}")
+                st.metric(f"{y_var} Std", f"{df[y_var].std():.2f}")
     else:
         st.warning("No valid data for selected columns")
 
