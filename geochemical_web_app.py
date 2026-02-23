@@ -123,14 +123,12 @@ with col2:
     st.markdown("### Ternary Plot")
     
     # Ternary plot variables
-    col_a, col_b, col_c = st.columns(1)
-    with col_a:
-        ternary_vars = st.multiselect(
-            "Select 3 Variables for Ternary Plot",
-            sorted(numeric_cols),
-            max_selections=3,
-            key="ternary_select"
-        )
+    ternary_vars = st.multiselect(
+        "Select 3 Variables for Ternary Plot",
+        sorted(numeric_cols),
+        max_selections=3,
+        key="ternary_select"
+    )
     
     if len(ternary_vars) == 3:
         data_ternary = df[ternary_vars].dropna()
