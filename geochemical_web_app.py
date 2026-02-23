@@ -88,6 +88,23 @@ with col1:
     data_scatter = df[[x_var, y_var]].dropna()
     
     if len(data_scatter) > 0:
+        # Assign color based on variable pair
+        color_map = {
+            'mgo': '#3498db',  # Blue
+            'ni': '#e74c3c',   # Red
+            'cu': '#f39c12',   # Orange
+            'sio2': '#27ae60', # Green
+            'al2o3': '#9b59b6', # Purple
+            'fe2o3': '#e67e22', # Dark Orange
+            'cao': '#16a085',  # Teal
+            'cr': '#c0392b',   # Dark Red
+            'co': '#8e44ad',   # Dark Purple
+            'zn': '#d35400',   # Pumpkin
+        }
+        
+        # Get color for y variable (or default)
+        plot_color = color_map.get(y_var.lower(), '#34495e')
+        
         fig_scatter = px.scatter(
             x=data_scatter[x_var],
             y=data_scatter[y_var],
@@ -97,7 +114,7 @@ with col1:
             opacity=0.7
         )
         
-        fig_scatter.update_traces(marker=dict(size=8, color='#1f77b4'))
+        fig_scatter.update_traces(marker=dict(size=10, color=plot_color, line=dict(width=0.5, color='white')))
         fig_scatter.update_layout(
             height=500,
             font=dict(size=11),
