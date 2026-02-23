@@ -18,16 +18,18 @@ st.set_page_config(
 st.title("🧪 Geochemical Data Plotter")
 st.markdown("Interactive visualization tool for geochemical data analysis")
 
+# File upload section
+uploaded_file = st.file_uploader("Upload your geochemical Excel file (.xls or .xlsx)", type=['xls', 'xlsx'])
+
 # Load data
 @st.cache_data
-def load_data():
-    file_path = r"C:\Users\mzake\Downloads\Tuli dataset.xls"
+def load_data(file):
     try:
-        excel_file = pd.ExcelFile(file_path)
+        excel_file = pd.ExcelFile(file)
         sheet_names = excel_file.sheet_names
         
         # Load first sheet
-        df = pd.read_excel(file_path, sheet_name=0)
+        df = pd.read_excel(file, sheet_name=0)
         
         # Standardize column names
         df.columns = df.columns.str.strip().str.replace(' ', '_').str.lower()
@@ -44,11 +46,16 @@ def load_data():
         st.error(f"Error loading data: {e}")
         return None, None, None
 
+# Check if file is uploaded
+if uploaded_file is None:
+    st.info("👆 Please upload your Excel file to get started")
+    st.stop()
+
 # Load data and check
-df, numeric_cols, sheet_names = load_data()
+df, numeric_cols, sheet_names = load_data(uploaded_file)
 
 if df is None:
-    st.error("Failed to load data. Please check the file path.")
+    st.error("Failed to load data. Please check your file format.")
     st.stop()
 
 # Display data info in sidebar
