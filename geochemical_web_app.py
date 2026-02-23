@@ -168,6 +168,144 @@ with col2:
     else:
         st.info("Select exactly 3 variables for ternary plot")
 
+# Geochemical Standard Plots
+st.markdown("---")
+st.markdown("### 🧪 Geochemical Analysis Plots")
+
+# Check if required columns exist
+has_ni = any('ni' in col for col in numeric_cols)
+has_mgo = any('mgo' in col for col in numeric_cols)
+has_depth = any('depth' in col for col in numeric_cols)
+has_cu = any('cu' in col for col in numeric_cols)
+has_la = any('la' in col for col in numeric_cols)
+has_nb = any('nb' in col for col in numeric_cols)
+has_nd = any('nd' in col for col in numeric_cols)
+has_sio2 = any('sio2' in col or 'sio₂' in col for col in numeric_cols)
+
+# Find borehole column (usually categorical)
+borehole_col = None
+for col in df.columns:
+    if 'borehole' in col.lower() or 'hole' in col.lower() or 'sample' in col.lower():
+        borehole_col = col
+        break
+
+geo_tab1, geo_tab2 = st.tabs(["Ni vs MgO", "Depth Profiles"])
+
+with geo_tab1:
+    st.markdown("#### Ni vs MgO Plot")
+    if has_ni and has_mgo:
+        ni_col = [col for col in numeric_cols if 'ni' in col][0]
+        mgo_col = [col for col in numeric_cols if 'mgo' in col][0]
+        
+        data_ni_mgo = df[[ni_col, mgo_col]].dropna()
+        
+        if borehole_col and borehole_col in df.columns:
+            # Color by borehole
+            fig_ni_mgo = px.scatter(
+                df,
+                x=mgo_col,
+                y=ni_col,
+                color=borehole_col,
+                title=f"Ni vs MgO (colored by {borehole_col})",
+                labels={ni_col: "Ni (ppm)", mgo_col: "MgO (%)"},
+                opacity=0.7,
+                trendline="ols"
+            )
+        else:
+            fig_ni_mgo = px.scatter(
+                x=data_ni_mgo[mgo_col],
+                y=data_ni_mgo[ni_col],
+                title="Ni vs MgO",
+                labels={mgo_col: "MgO (%)", ni_col: "Ni (ppm)"},
+                opacity=0.7,
+                trendline="ols"
+            )
+        
+        fig_ni_mgo.update_traces(marker=dict(size=8))
+        fig_ni_mgo.update_layout(height=500, hovermode='closest')
+        st.plotly_chart(fig_ni_mgo, use_container_width=True)
+    else:
+        st.warning("⚠️ Ni and/or MgO columns not found in the dataset")
+
+with geo_tab2:
+    st.markdown("#### Depth Profiles by Borehole")
+    
+    if not has_depth:
+        st.warning("⚠️ Depth column not found in the dataset")
+    else:
+        depth_col = [col for col in numeric_cols if 'depth' in col][0]
+        
+        if borehole_col:
+            selected_borehole = st.selectbox(
+                "Select Borehole",
+                options=sorted(df[borehole_col].dropna().unique()),
+                key="borehole_select"
+            )
+            df_filtered = df[df[borehole_col] == selected_borehole].copy()
+        else:
+            st.info("No borehole column detected - showing all data")
+            df_filtered = df.copy()
+        
+        # Create depth profile plots
+        depth_plots = []
+        plot_titles = []
+        
+        if has_mgo:
+            mgo_col = [col for col in numeric_cols if 'mgo' in col][0]
+            depth_plots.append((mgo_col, "MgO (%)"))
+        
+        if has_ni:
+            ni_col = [col for col in numeric_cols if 'ni' in col][0]
+            depth_plots.append((ni_col, "Ni (ppm)"))
+        
+        if has_cu:
+            cu_col = [col for col in numeric_cols if 'cu' in col][0]
+            depth_plots.append((cu_col, "Cu (ppm)"))
+        
+        if has_sio2:
+            sio2_col = [col for col in numeric_cols if 'sio2' in col or 'sio₂' in col][0]
+            depth_plots.append((sio2_col, "SiO₂ (%)"))
+        
+        # La/Nb or La/Nd ratio
+        if has_la and has_nb:
+            la_col = [col for col in numeric_cols if 'la' in col and 'la/' not in col][0]
+            nb_col = [col for col in numeric_cols if 'nb' in col][0]
+            df_filtered['la_nb_ratio'] = df_filtered[la_col] / df_filtered[nb_col]
+            depth_plots.append(('la_nb_ratio', "La/Nb"))
+        elif has_la and has_nd:
+            la_col = [col for col in numeric_cols if 'la' in col][0]
+            nd_col = [col for col in numeric_cols if 'nd' in col][0]
+            df_filtered['la_nd_ratio'] = df_filtered[la_col] / df_filtered[nd_col]
+            depth_plots.append(('la_nd_ratio', "La/Nd"))
+        
+        # Create plots in a grid
+        if len(depth_plots) > 0:
+            cols_per_row = 2
+            for i in range(0, len(depth_plots), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for j, (var_col, label) in enumerate(depth_plots[i:i+cols_per_row]):
+                    with cols[j]:
+                        data_plot = df_filtered[[depth_col, var_col]].dropna()
+                        
+                        if len(data_plot) > 0:
+                            fig = px.scatter(
+                                x=data_plot[var_col],
+                                y=data_plot[depth_col],
+                                title=f"{label} vs Depth",
+                                labels={var_col: label, depth_col: "Depth (m)"},
+                                opacity=0.7
+                            )
+                            
+                            # Invert y-axis for depth (deeper = lower)
+                            fig.update_yaxis(autorange="reversed")
+                            fig.update_traces(marker=dict(size=6, color='#2ca02c'))
+                            fig.update_layout(height=400, showlegend=False)
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.warning(f"No data for {label}")
+        else:
+            st.warning("⚠️ Required columns for depth profiles not found")
+
 # Advanced analysis
 st.markdown("---")
 st.markdown("### 📉 Advanced Analysis")
